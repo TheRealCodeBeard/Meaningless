@@ -1,15 +1,25 @@
 const fs_promises = require('fs').promises;
 const fs = require('fs');
-console.log("Meanlinglessness");
+console.log("Meanlinglessness\n----------------------------\n");
 
 let path_to_text = "./text/christmas_carol_dickens.txt";
+let paths_to_text = [
+    "./text/christmas_carol_dickens.txt",
+    "./text/the_raven_poe.txt",
+    "./text/the_wendigo_blackwood.txt",
+    "./text/poems_wordsworth.txt",
+    "./text/the_rats_in_the_walls_lovecraft.txt",
+    "./text/the_strange_case_of_dr_jekyll_and_mr_hyde_stevenson.txt",
+    "./text/anthem_rand.txt",
+    "./text/the_three_strangers_hardy.txt"
+];
 let line_lengths_data = "./data/line_lengths.csv";
 let simple_model_data = "./data/simple_model.json";
 let names_data = "./data/names.txt"
 let names_list = [];
 
-let get_data = async function(path){
-    return await fs_promises.readFile(path,'utf8');
+let get_data = function(path){
+    return fs.readFileSync(path,'utf8');
 };
 
 let get_char_bucket = function(len){
@@ -51,12 +61,12 @@ let clean = function(line){
 };
 
 let clean_word = function(word){
-   return word.trim().replace(/[\(\),";:]|--/g,"").toLowerCase();
+   return word.trim().replace(/[\(\),";:“”]|--/g,"").toLowerCase();
 }
 
 let line_lengths = function(data){
     let paragraphs = data.split(/\n/);
-    let lengths = ["Characters,Character Bucket,Words,Word Bucket,Line"];
+    let lengths = ["Text","Characters,Character Bucket,Words,Word Bucket,Line"];
     let word_lengths = [];
     paragraphs.forEach(p=>{
         lines = p.split(/[.!?]"*/);
@@ -100,39 +110,56 @@ let simple_model = function(data){
 };
 
 let initial_cap = function(word){
-    return word[0].toUpperCase() + word.slice(1);
+    if(word){
+        return word[0].toUpperCase() + word.slice(1);
+    } else {
+        return word;
+    }
 };
 
 let adjust_word = function(word){
-    console.log(names_list);
-    if(names_list.contains(word)) word = initial_cap(word);
+    let tested = word.replace(/'s/,"");
+    if(names_list.includes(tested) 
+        || word ==="i") word = initial_cap(word);
     return word;
 };
 
 let generate_sentence = function(model,first,avg_length){
+    let sentence = [initial_cap(first)];
     let word = first;
-    let sentence = [];
-    for(var i=0;i<=avg_length;i++){
-        sentence.push(adjust_word(word));
+    let actual_length = Math.floor((avg_length*0.5) + Math.random()*(avg_length*0.75));
+    for(var i=0;i<=actual_length;i++){
         let following_words = model[word];
         if(following_words){
             word = model[word][Math.floor(Math.random()*following_words.length)];
         } else {
             word = first;
         }
+        sentence.push(adjust_word(word));
     }
-    console.log(sentence.join(' '));
+    let unacceptable_ends = ["a","and","the","at","to","as","of",
+                            "who","which","in","he","or","but","than",
+                            "that","their","from"];
+    for(var i=0;i<5;i++){
+        if(unacceptable_ends.includes(sentence[sentence.length-1]))sentence.pop();
+    }
+    console.log(sentence.join(' ')+".".trim());
 };
 
 let process_data = function(data){
     names_list =  fs.readFileSync(names_data,'utf8').split('\r\n');
     let average_line_word_length = line_lengths(data);
+    console.log(`Average line length ${Math.floor(average_line_word_length)}\n--------------------------------`);
     let {model,words} = simple_model(data);
     for(var i =0;i<10;i++){
         generate_sentence(model,words[Math.floor(Math.random()*words.length)],Math.floor(average_line_word_length));
     }
+
+    console.log("\n----------------------------\nDone!");
 };
 
-
-
-get_data(path_to_text).then(process_data);
+let data = "";
+paths_to_text.forEach((p)=>{
+    data =data + get_data(p) +"\n";
+});
+process_data(data);
