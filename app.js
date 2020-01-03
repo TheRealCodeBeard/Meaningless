@@ -1,8 +1,12 @@
 const fs_promises = require('fs').promises;
+const fs = require('fs');
 console.log("Meanlinglessness");
 
 let path_to_text = "./text/christmas_carol_dickens.txt";
 let line_lengths_data = "./data/line_lengths.csv";
+let simple_model_data = "./data/simple_model.json";
+let names_data = "./data/names.txt"
+let names_list = [];
 
 let get_data = async function(path){
     return await fs_promises.readFile(path,'utf8');
@@ -46,25 +50,89 @@ let clean = function(line){
     return line.replace(/"/g,"'");
 };
 
+let clean_word = function(word){
+   return word.trim().replace(/[\(\),";:]|--/g,"").toLowerCase();
+}
+
 let line_lengths = function(data){
     let paragraphs = data.split(/\n/);
     let lengths = ["Characters,Character Bucket,Words,Word Bucket,Line"];
+    let word_lengths = [];
     paragraphs.forEach(p=>{
-        lines = p.split(/[.!?]"*/)
+        lines = p.split(/[.!?]"*/);
         lines.forEach(l=>{
             let line = l.trim();
             let char_len = line.length;
             if(char_len>0){
                 let word_len = line.split(/\s/).length;
+                word_lengths.push(word_len);
                 lengths.push(`${char_len},${get_char_bucket(char_len)},${word_len},${get_word_bucket(word_len)},"${clean(line)}"`);
             }
         });
     });
     fs_promises.writeFile(line_lengths_data,lengths.join('\n'));
+    return word_lengths.reduce((a, b) => a + b, 0)/word_lengths.length;
+};
+
+let simple_model = function(data){
+    let model = {};
+    let paragraphs = data.split(/\n/);
+    let output_words = [];
+    paragraphs.forEach(p=>{
+        lines = p.split(/[.!?]"*/);
+        lines.forEach(l=>{
+            let line = l.trim();
+            if(line.length>0){
+                let words = line.split(/\s/).map(clean_word);
+                words.map((w,i)=>{
+                    if(i<words.length-1){
+                        if(!output_words.includes(w)) output_words.push(w);
+                        let w2 = words[i+1];
+                        if(!model[w]) model[w]=[];
+                        model[w].push(w2);
+                    }
+                });
+            }
+        });
+    });
+    fs_promises.writeFile(simple_model_data,JSON.stringify(model,null,2));
+    return {model:model,words:output_words};
+};
+
+let initial_cap = function(word){
+    return word[0].toUpperCase() + word.slice(1);
+};
+
+let adjust_word = function(word){
+    console.log(names_list);
+    if(names_list.contains(word)) word = initial_cap(word);
+    return word;
+};
+
+let generate_sentence = function(model,first,avg_length){
+    let word = first;
+    let sentence = [];
+    for(var i=0;i<=avg_length;i++){
+        sentence.push(adjust_word(word));
+        let following_words = model[word];
+        if(following_words){
+            word = model[word][Math.floor(Math.random()*following_words.length)];
+        } else {
+            word = first;
+        }
+    }
+    console.log(sentence.join(' '));
 };
 
 let process_data = function(data){
-    line_lengths(data);
+    names_list =  fs.readFileSync(names_data,'utf8').split('\r\n');
+    let average_line_word_length = line_lengths(data);
+    let {model,words} = simple_model(data);
+    for(var i =0;i<10;i++){
+        generate_sentence(model,words[Math.floor(Math.random()*words.length)],Math.floor(average_line_word_length));
+    }
 };
+
+
 
 get_data(path_to_text).then(process_data);
