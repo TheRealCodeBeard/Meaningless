@@ -8708,7 +8708,7 @@
     "age",
     "federal",
     "women",
-    "negroes",
+    "natives",
     "army",
     "lines",
     "war",
@@ -8800,7 +8800,7 @@
     "world",
     "imputations",
     "one",
-    "negroes",
+    "natives",
     "mexican",
     "vaguer",
     "barren",
@@ -95290,7 +95290,7 @@
   "cat": [
     "or",
     "was",
-    "nigger-man",
+    "tiddles",
     "whose",
     "in",
     "started",
@@ -100292,6 +100292,7 @@
   ],
   "native": [
     "province",
+    "looks",
     "chanties",
     "and",
     "hard-headedness",
@@ -100756,7 +100757,7 @@
     "than"
   ],
   "stage": [
-    "negro",
+    "native",
     "picture",
     "farther",
     "where",
@@ -100764,9 +100765,6 @@
     "of",
     "with",
     "no"
-  ],
-  "negro": [
-    "looks"
   ],
   "instincts": [
     "of",
@@ -108915,7 +108913,7 @@
   "soldiers": [
     "shouting"
   ],
-  "negroes": [
+  "natives": [
     "howling",
     "and"
   ],
@@ -110030,26 +110028,8 @@
     "i",
     "of"
   ],
-  "nigger-man": [
-    "was",
-    "creeping",
-    "was",
-    "was",
-    "raced",
-    "who",
-    "following",
-    "was",
-    "was",
-    "started",
-    "unmindful",
-    "and",
-    "had",
-    "was",
-    "had",
-    "across",
-    "was",
-    "was",
-    "away"
+  "tiddles": [
+    "was"
   ],
   "bolton": [
     "massachusetts"
@@ -110319,6 +110299,26 @@
   ],
   "jetty": [
     "form"
+  ],
+  "nigger-man": [
+    "creeping",
+    "was",
+    "was",
+    "raced",
+    "who",
+    "following",
+    "was",
+    "was",
+    "started",
+    "unmindful",
+    "and",
+    "had",
+    "was",
+    "had",
+    "across",
+    "was",
+    "was",
+    "away"
   ],
   "scratching": [
     "at"

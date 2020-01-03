@@ -4,6 +4,8 @@ const ld = require('./levenshteinDistance.js');
 console.log("Meanlinglessness\n----------------------------\n");
 
 let path_to_text = "./text/christmas_carol_dickens.txt";
+let path_to_thesaurus = "./text/th_en_US_new.dat";
+let thesaurus = {};
 let paths_to_text = [
     "./text/christmas_carol_dickens.txt",
     "./text/the_raven_poe.txt",
@@ -19,10 +21,16 @@ let simple_model_data = "./data/simple_model.json";
 let names_data = "./data/names.txt"
 let names_list = [];
 
-let trigger_phrase = "Maya Dillon Jo Walsh Witches Coven";
-
 let get_data = function(path){
     return fs.readFileSync(path,'utf8');
+};
+
+let shuffle = function (a) {
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
 };
 
 let get_char_bucket = function(len){
@@ -65,7 +73,27 @@ let clean = function(line){
 
 let clean_word = function(word){
    return word.trim().replace(/[\(\),";:“”]|--/g,"").toLowerCase();
-}
+};
+
+let load_thesaurus = function(){
+    let th_d = get_data(path_to_thesaurus);
+    let lines = th_d.split('\n');
+    let last_main_word = null;
+    lines.forEach((l)=>{
+        if(l==="ISO8859-1"){}
+        else if(l.match(/^\(/)) {
+            if(last_main_word) {
+                l.split('|').slice(1).forEach((w)=>{
+                    thesaurus[last_main_word].push(w);
+                });
+            }
+        } else if(l.match(/^[^\(]+/)) {
+            last_main_word = l.split('|')[0];
+            thesaurus[last_main_word]=[last_main_word];
+        }
+    });
+    console.log(`Thesaurus loaded: ${Object.keys(thesaurus).length}`);
+};
 
 let line_lengths = function(data){
     let paragraphs = data.split(/\n/);
@@ -162,7 +190,19 @@ let closest_word = function(words,otherWord){
     return scores[0].word;
 };
 
+let get_synonyms = function(w,additional){
+    let synonyms = [];
+    w = w.toLowerCase();
+    if(thesaurus[w]) synonyms = thesaurus[w];
+    synonyms = synonyms.filter(w=>!w.match(/\s/));
+    synonyms = shuffle(synonyms);
+    synonyms = synonyms.slice(0,additional);
+    if(!synonyms.includes(w))synonyms.push(w);
+    return synonyms;
+};
+
 let process_data = function(data){
+    load_thesaurus();
     names_list =  fs.readFileSync(names_data,'utf8').split('\r\n');
     let average_line_word_length = line_lengths(data);
     console.log(`Average line length ${Math.floor(average_line_word_length)}\n--------------------------------`);
@@ -171,10 +211,14 @@ let process_data = function(data){
         generate_sentence(model,words[Math.floor(Math.random()*words.length)],Math.floor(average_line_word_length),".");
     }
     console.log("\n----------------------------\n");
+    let trigger_phrase = "Mark Steven Grumpy Old Data Men";
     console.log(`(Trigger Phrase: ${trigger_phrase})`);
-    let fragments = trigger_phrase.split(' ').map((w)=>{
-        if(model[w]) return generate_sentence(model,w,5,"");
-        else return generate_sentence(model,closest_word(words,w),5,"");
+    let trigger_words = trigger_phrase.split(' ').map((w)=>get_synonyms(w,2)).flat(1);
+    //console.log(trigger_words);
+    let len = Math.floor(average_line_word_length/2);
+    let fragments = trigger_words.map((w)=>{
+        if(model[w]) return generate_sentence(model,w,len,"");
+        else return generate_sentence(model,closest_word(words,w),len,"");
     });
     console.log("\n----------------------------\nDone!");
 };

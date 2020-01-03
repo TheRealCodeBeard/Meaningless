@@ -5,6 +5,8 @@ Some meaningless Node.js
 console.log("Don't come here looking for meaning");
 ```
 
+You will need an ISO8859-1 Thesaurus file to make this work.
+
 It currently generates stuff like this...
 
 ```
