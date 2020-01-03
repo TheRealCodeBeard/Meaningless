@@ -1,5 +1,6 @@
 const fs_promises = require('fs').promises;
 const fs = require('fs');
+const ld = require('./levenshteinDistance.js');
 console.log("Meanlinglessness\n----------------------------\n");
 
 let path_to_text = "./text/christmas_carol_dickens.txt";
@@ -17,6 +18,8 @@ let line_lengths_data = "./data/line_lengths.csv";
 let simple_model_data = "./data/simple_model.json";
 let names_data = "./data/names.txt"
 let names_list = [];
+
+let trigger_phrase = "Maya Dillon Jo Walsh Witches Coven";
 
 let get_data = function(path){
     return fs.readFileSync(path,'utf8');
@@ -124,7 +127,7 @@ let adjust_word = function(word){
     return word;
 };
 
-let generate_sentence = function(model,first,avg_length){
+let generate_sentence = function(model,first,avg_length,terminator){
     let sentence = [initial_cap(first)];
     let word = first;
     let actual_length = Math.floor((avg_length*0.5) + Math.random()*(avg_length*0.75));
@@ -143,7 +146,20 @@ let generate_sentence = function(model,first,avg_length){
     for(var i=0;i<5;i++){
         if(unacceptable_ends.includes(sentence[sentence.length-1]))sentence.pop();
     }
-    console.log(sentence.join(' ')+".".trim());
+    let final = sentence.join(' ')+terminator.trim();
+    console.log(final);
+    return final;
+};
+
+let closest_word = function(words,otherWord){
+    let scores = words.map((w)=>{
+        return {
+            word:w,
+            distance:ld(w,otherWord)
+        }
+    });
+    scores = scores.sort((a,b)=>a.distance-b.distance);
+    return scores[0].word;
 };
 
 let process_data = function(data){
@@ -152,9 +168,14 @@ let process_data = function(data){
     console.log(`Average line length ${Math.floor(average_line_word_length)}\n--------------------------------`);
     let {model,words} = simple_model(data);
     for(var i =0;i<10;i++){
-        generate_sentence(model,words[Math.floor(Math.random()*words.length)],Math.floor(average_line_word_length));
+        generate_sentence(model,words[Math.floor(Math.random()*words.length)],Math.floor(average_line_word_length),".");
     }
-
+    console.log("\n----------------------------\n");
+    console.log(`(Trigger Phrase: ${trigger_phrase})`);
+    let fragments = trigger_phrase.split(' ').map((w)=>{
+        if(model[w]) return generate_sentence(model,w,5,"");
+        else return generate_sentence(model,closest_word(words,w),5,"");
+    });
     console.log("\n----------------------------\nDone!");
 };
 
