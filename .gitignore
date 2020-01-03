@@ -102,3 +102,9 @@ dist
 
 # TernJS port file
 .tern-port
+
+# The text files I have used
+text/
+
+#visualisaton file
+data/*.pbix
