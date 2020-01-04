@@ -1,7 +1,7 @@
 const fs_promises = require('fs').promises;
 const fs = require('fs');
 const nlp = require('natural');
-//const ld = require('./levenshteinDistance.js');
+const thesaurus = require('./thesaurus.js');
 let Sentiment_Analyzer = require('natural').SentimentAnalyzer;
 let stemmer = require('natural').PorterStemmer;
 let sentiment_analyzer = new Sentiment_Analyzer("English", stemmer, "afinn");
@@ -9,7 +9,6 @@ console.log("Meanlinglessness\n----------------------------\n");
 
 let path_to_text = "./text/christmas_carol_dickens.txt";
 let path_to_thesaurus = "./text/th_en_US_new.dat";
-let thesaurus = {};
 let paths_to_text = [
     "./text/christmas_carol_dickens.txt",
     //"./text/the_raven_poe.txt",
@@ -81,26 +80,6 @@ let clean = function(line){
 
 let clean_word = function(word){
    return word.trim().replace(/[\(\),";:“”]|--/g,"").toLowerCase();
-};
-
-let load_thesaurus = function(){
-    let th_d = get_data(path_to_thesaurus);
-    let lines = th_d.split('\n');
-    let last_main_word = null;
-    lines.forEach((l)=>{
-        if(l==="ISO8859-1"){}
-        else if(l.match(/^\(/)) {
-            if(last_main_word) {
-                l.split('|').slice(1).forEach((w)=>{
-                    thesaurus[last_main_word].push(w);
-                });
-            }
-        } else if(l.match(/^[^\(]+/)) {
-            last_main_word = l.split('|')[0];
-            thesaurus[last_main_word]=[last_main_word];
-        }
-    });
-    console.log(`Thesaurus loaded: ${Object.keys(thesaurus).length}`);
 };
 
 let line_lengths = function(data){
@@ -202,18 +181,16 @@ let closest_word = function(words,otherWord){
 };
 
 let get_synonyms = function(w,additional){
-    let synonyms = [];
-    w = w.toLowerCase();
-    if(thesaurus[w]) synonyms = thesaurus[w];
+    let synonyms = thesaurus.get_synonyms(w);
     synonyms = synonyms.filter(w=>!w.match(/\s/));
     synonyms = shuffle(synonyms);
     synonyms = synonyms.slice(0,additional);
     if(!synonyms.includes(w))synonyms.push(w);
-    return synonyms;
+    return synonyms.flat(1);
 };
 
 let process_data = function(data){
-    load_thesaurus();
+    thesaurus.load(path_to_thesaurus);
     names_list =  fs.readFileSync(names_data,'utf8').split('\r\n');
     let average_line_word_length = line_lengths(data);
     console.log(`Average line length ${Math.floor(average_line_word_length)}\n--------------------------------`);
@@ -224,8 +201,8 @@ let process_data = function(data){
     console.log("\n----------------------------\n");
     let trigger_phrase = "Wonderful turkey";
     console.log(`(Trigger Phrase: ${trigger_phrase})`);
-    let trigger_words = trigger_phrase.split(' ').map((w)=>get_synonyms(w,2)).flat(1);
-    //console.log(trigger_words);
+    let trigger_words = trigger_phrase.split(' ').map((w)=>get_synonyms(w,3)).flat(1);
+    console.log(trigger_words);
     let len = Math.floor(average_line_word_length/2);
     let fragments = trigger_words.map((w)=>{
         if(model[w]) return generate_sentence(model,w,len,"");
@@ -233,7 +210,6 @@ let process_data = function(data){
     });
     console.log("\n----------------------------\nDone!");
 };
-
 
 let data = "";
 paths_to_text.forEach((p)=>{
