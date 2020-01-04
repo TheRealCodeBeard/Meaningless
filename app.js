@@ -1,6 +1,10 @@
 const fs_promises = require('fs').promises;
 const fs = require('fs');
-const ld = require('./levenshteinDistance.js');
+const nlp = require('natural');
+//const ld = require('./levenshteinDistance.js');
+let Sentiment_Analyzer = require('natural').SentimentAnalyzer;
+let stemmer = require('natural').PorterStemmer;
+let sentiment_analyzer = new Sentiment_Analyzer("English", stemmer, "afinn");
 console.log("Meanlinglessness\n----------------------------\n");
 
 let path_to_text = "./text/christmas_carol_dickens.txt";
@@ -8,18 +12,22 @@ let path_to_thesaurus = "./text/th_en_US_new.dat";
 let thesaurus = {};
 let paths_to_text = [
     "./text/christmas_carol_dickens.txt",
-    "./text/the_raven_poe.txt",
-    "./text/the_wendigo_blackwood.txt",
-    "./text/poems_wordsworth.txt",
-    "./text/the_rats_in_the_walls_lovecraft.txt",
-    "./text/the_strange_case_of_dr_jekyll_and_mr_hyde_stevenson.txt",
-    "./text/anthem_rand.txt",
-    "./text/the_three_strangers_hardy.txt"
+    //"./text/the_raven_poe.txt",
+    //"./text/the_wendigo_blackwood.txt",
+    //"./text/poems_wordsworth.txt",
+    //"./text/the_rats_in_the_walls_lovecraft.txt",
+    //"./text/the_strange_case_of_dr_jekyll_and_mr_hyde_stevenson.txt",
+    //"./text/anthem_rand.txt",
+    //"./text/the_three_strangers_hardy.txt"
 ];
 let line_lengths_data = "./data/line_lengths.csv";
 let simple_model_data = "./data/simple_model.json";
 let names_data = "./data/names.txt"
 let names_list = [];
+
+let get_sentiment = function(sentence){
+    return sentiment_analyzer.getSentiment(sentence.split(' '));
+};
 
 let get_data = function(path){
     return fs.readFileSync(path,'utf8');
@@ -97,19 +105,22 @@ let load_thesaurus = function(){
 
 let line_lengths = function(data){
     let paragraphs = data.split(/\n/);
-    let lengths = ["Text","Characters,Character Bucket,Words,Word Bucket,Line"];
+    let lengths = ["Paragraph,Characters,Character Bucket,Words,Word Bucket,Sentiment,Line"];
     let word_lengths = [];
+    let paragraph = 1;
     paragraphs.forEach(p=>{
         lines = p.split(/[.!?]"*/);
         lines.forEach(l=>{
             let line = l.trim();
+            let sentimennt = get_sentiment(line);
             let char_len = line.length;
             if(char_len>0){
                 let word_len = line.split(/\s/).length;
                 word_lengths.push(word_len);
-                lengths.push(`${char_len},${get_char_bucket(char_len)},${word_len},${get_word_bucket(word_len)},"${clean(line)}"`);
+                lengths.push(`${paragraph},${char_len},${get_char_bucket(char_len)},${word_len},${get_word_bucket(word_len)},${sentimennt},"${clean(line)}"`);
             }
         });
+        paragraph +=1;
     });
     fs_promises.writeFile(line_lengths_data,lengths.join('\n'));
     return word_lengths.reduce((a, b) => a + b, 0)/word_lengths.length;
@@ -183,7 +194,7 @@ let closest_word = function(words,otherWord){
     let scores = words.map((w)=>{
         return {
             word:w,
-            distance:ld(w,otherWord)
+            distance:nlp.LevenshteinDistance(w,otherWord)
         }
     });
     scores = scores.sort((a,b)=>a.distance-b.distance);
@@ -211,7 +222,7 @@ let process_data = function(data){
         generate_sentence(model,words[Math.floor(Math.random()*words.length)],Math.floor(average_line_word_length),".");
     }
     console.log("\n----------------------------\n");
-    let trigger_phrase = "Mark Steven Grumpy Old Data Men";
+    let trigger_phrase = "Wonderful turkey";
     console.log(`(Trigger Phrase: ${trigger_phrase})`);
     let trigger_words = trigger_phrase.split(' ').map((w)=>get_synonyms(w,2)).flat(1);
     //console.log(trigger_words);
@@ -222,6 +233,7 @@ let process_data = function(data){
     });
     console.log("\n----------------------------\nDone!");
 };
+
 
 let data = "";
 paths_to_text.forEach((p)=>{

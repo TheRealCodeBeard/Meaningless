@@ -6,7 +6,8 @@
     "test": "echo \"No tests yet...\""
   },
   "dependencies": {
-    "seedrandom": "^3.0.5"
+    "seedrandom": "^3.0.5",
+    "natural": "^0.6.3"
   },
   "devDependencies": {}
 }
