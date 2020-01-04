@@ -1,11 +1,11 @@
-const fs_promises = require('fs').promises;
 const fs = require('fs');
 const nlp = require('natural');
 const thesaurus = require('./thesaurus.js');
+const models = require('./models.js');
+const choose_random_from = require('./tools.js').choose_random_from;
 let Sentiment_Analyzer = require('natural').SentimentAnalyzer;
 let stemmer = require('natural').PorterStemmer;
 let sentiment_analyzer = new Sentiment_Analyzer("English", stemmer, "afinn");
-console.log("Meanlinglessness\n----------------------------\n");
 
 let path_to_text = "./text/christmas_carol_dickens.txt";
 let path_to_thesaurus = "./text/th_en_US_new.dat";
@@ -78,10 +78,6 @@ let clean = function(line){
     return line.replace(/"/g,"'");
 };
 
-let clean_word = function(word){
-   return word.trim().replace(/[\(\),";:“”]|--/g,"").toLowerCase();
-};
-
 let line_lengths = function(data){
     let paragraphs = data.split(/\n/);
     let lengths = ["Paragraph,Characters,Character Bucket,Words,Word Bucket,Sentiment,Line"];
@@ -101,7 +97,7 @@ let line_lengths = function(data){
         });
         paragraph +=1;
     });
-    fs_promises.writeFile(line_lengths_data,lengths.join('\n'));
+    fs.writeFileSync(line_lengths_data,lengths.join('\n'));
     return word_lengths.reduce((a, b) => a + b, 0)/word_lengths.length;
 };
 
@@ -126,7 +122,7 @@ let simple_model = function(data){
             }
         });
     });
-    fs_promises.writeFile(simple_model_data,JSON.stringify(model,null,2));
+    fs.writeFileSync(simple_model_data,JSON.stringify(model,null,2));
     return {model:model,words:output_words};
 };
 
@@ -189,30 +185,43 @@ let get_synonyms = function(w,additional){
     return synonyms.flat(1);
 };
 
-let process_data = function(data){
-    thesaurus.load(path_to_thesaurus);
-    names_list =  fs.readFileSync(names_data,'utf8').split('\r\n');
-    let average_line_word_length = line_lengths(data);
-    console.log(`Average line length ${Math.floor(average_line_word_length)}\n--------------------------------`);
-    let {model,words} = simple_model(data);
+let generate_general_sentences = function(model,words,len){
     for(var i =0;i<10;i++){
-        generate_sentence(model,words[Math.floor(Math.random()*words.length)],Math.floor(average_line_word_length),".");
+        generate_sentence(model,choose_random_from(words),len,".");
     }
-    console.log("\n----------------------------\n");
-    let trigger_phrase = "Wonderful turkey";
+};
+
+let generate_triggered_sentences = function(trigger_phrase,model,words,len){
     console.log(`(Trigger Phrase: ${trigger_phrase})`);
     let trigger_words = trigger_phrase.split(' ').map((w)=>get_synonyms(w,3)).flat(1);
-    console.log(trigger_words);
-    let len = Math.floor(average_line_word_length/2);
+    //console.log(trigger_words);
+    len = Math.floor(len/2);
     let fragments = trigger_words.map((w)=>{
         if(model[w]) return generate_sentence(model,w,len,"");
         else return generate_sentence(model,closest_word(words,w),len,"");
     });
+};
+
+let process_data = function(data){
+    names_list =  fs.readFileSync(names_data,'utf8').split('\r\n');
+    let average_line_word_length = line_lengths(data);
+    console.log(`Average line length ${Math.floor(average_line_word_length)}\n--------------------------------`);
+    let model = models.simple_markov_model(data);
+    let words = Object.getOwnPropertyNames(model);
+    generate_general_sentences(model,words,Math.floor(average_line_word_length));
+    console.log("\n----------------------------\n");
+    let trigger_phrase = "Wonderful turkey";
+    generate_triggered_sentences(trigger_phrase,model,words,Math.floor(average_line_word_length));
     console.log("\n----------------------------\nDone!");
 };
 
+console.log("|Meanlinglessness|\n----------------------------");
+console.log("Loading Thesaurus...");
+thesaurus.load(path_to_thesaurus);
+console.log("Loading Text Data...");
 let data = "";
 paths_to_text.forEach((p)=>{
     data =data + get_data(p) +"\n";
 });
+console.log("----------------------------");
 process_data(data);
