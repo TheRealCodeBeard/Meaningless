@@ -2,7 +2,7 @@ const fs = require('fs');
 const nlp = require('natural');
 const thesaurus = require('./thesaurus.js');
 const models = require('./models.js');
-const choose_random_from = require('./tools.js').choose_random_from;
+c
 const initial_cap = require('./tools.js').initial_cap;
 const shuffle = require('./tools.js').shuffle;
 const get_data_from_folder = require('./tools.js').get_data_from_folder;
@@ -183,6 +183,6 @@ names_list =  get_data_from_path(names_data).split('\r\n');
 console.log("----------------------------");
 let load_model = true;
 let data = load_model?null:get_data_from_folder(path_to_data);
-let average_line_word_length = load_model?15:line_lengths(data);
-let model = get_model(true,path_to_model,data);
+let average_line_word_length = load_model?10:line_lengths(data);
+let model = get_model(load_model,path_to_model,data);
 process_model(model,average_line_word_length);
