@@ -2,11 +2,12 @@ const fs = require('fs');
 const nlp = require('natural');
 const thesaurus = require('./thesaurus.js');
 const models = require('./models.js');
-c
+
 const initial_cap = require('./tools.js').initial_cap;
 const shuffle = require('./tools.js').shuffle;
 const get_data_from_folder = require('./tools.js').get_data_from_folder;
 const get_data_from_path = require('./tools.js').get_data;
+const choose_random_from = require('./tools.js').choose_random_from;
 
 let Sentiment_Analyzer = require('natural').SentimentAnalyzer;
 let stemmer = require('natural').PorterStemmer;

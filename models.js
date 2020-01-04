@@ -10,7 +10,7 @@ let simple_markov_model = function(data){
             let line = l.trim();
             if(line.length>0){
                 let words = line.split(/\s/).map(clean_word);
-                words.map((w,i)=>{
+                words.forEach((w,i)=>{
                     if(i<words.length-1){
                         let w2 = words[i+1];
                         if(!model[w]) model[w]=[];
