@@ -3,41 +3,24 @@ const nlp = require('natural');
 const thesaurus = require('./thesaurus.js');
 const models = require('./models.js');
 const choose_random_from = require('./tools.js').choose_random_from;
+const initial_cap = require('./tools.js').initial_cap;
+const shuffle = require('./tools.js').shuffle;
+const get_data_from_folder = require('./tools.js').get_data_from_folder;
+const get_data_from_path = require('./tools.js').get_data;
+
 let Sentiment_Analyzer = require('natural').SentimentAnalyzer;
 let stemmer = require('natural').PorterStemmer;
 let sentiment_analyzer = new Sentiment_Analyzer("English", stemmer, "afinn");
 
-let path_to_text = "./text/christmas_carol_dickens.txt";
 let path_to_thesaurus = "./text/th_en_US_new.dat";
-let paths_to_text = [
-    "./text/christmas_carol_dickens.txt",
-    //"./text/the_raven_poe.txt",
-    //"./text/the_wendigo_blackwood.txt",
-    //"./text/poems_wordsworth.txt",
-    //"./text/the_rats_in_the_walls_lovecraft.txt",
-    //"./text/the_strange_case_of_dr_jekyll_and_mr_hyde_stevenson.txt",
-    //"./text/anthem_rand.txt",
-    //"./text/the_three_strangers_hardy.txt"
-];
+let path_to_data = "./text";
 let line_lengths_data = "./data/line_lengths.csv";
-let simple_model_data = "./data/simple_model.json";
+let path_to_model = "./data/simple_model.json";
 let names_data = "./data/names.txt"
 let names_list = [];
 
 let get_sentiment = function(sentence){
     return sentiment_analyzer.getSentiment(sentence.split(' '));
-};
-
-let get_data = function(path){
-    return fs.readFileSync(path,'utf8');
-};
-
-let shuffle = function (a) {
-    for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
 };
 
 let get_char_bucket = function(len){
@@ -101,39 +84,6 @@ let line_lengths = function(data){
     return word_lengths.reduce((a, b) => a + b, 0)/word_lengths.length;
 };
 
-let simple_model = function(data){
-    let model = {};
-    let paragraphs = data.split(/\n/);
-    let output_words = [];
-    paragraphs.forEach(p=>{
-        lines = p.split(/[.!?]"*/);
-        lines.forEach(l=>{
-            let line = l.trim();
-            if(line.length>0){
-                let words = line.split(/\s/).map(clean_word);
-                words.map((w,i)=>{
-                    if(i<words.length-1){
-                        if(!output_words.includes(w)) output_words.push(w);
-                        let w2 = words[i+1];
-                        if(!model[w]) model[w]=[];
-                        model[w].push(w2);
-                    }
-                });
-            }
-        });
-    });
-    fs.writeFileSync(simple_model_data,JSON.stringify(model,null,2));
-    return {model:model,words:output_words};
-};
-
-let initial_cap = function(word){
-    if(word){
-        return word[0].toUpperCase() + word.slice(1);
-    } else {
-        return word;
-    }
-};
-
 let adjust_word = function(word){
     let tested = word.replace(/'s/,"");
     if(names_list.includes(tested) 
@@ -142,13 +92,13 @@ let adjust_word = function(word){
 };
 
 let generate_sentence = function(model,first,avg_length,terminator){
-    let sentence = [initial_cap(first)];
+    let sentence = [adjust_word(first)];
     let word = first;
     let actual_length = Math.floor((avg_length*0.5) + Math.random()*(avg_length*0.75));
     for(var i=0;i<=actual_length;i++){
         let following_words = model[word];
         if(following_words){
-            word = model[word][Math.floor(Math.random()*following_words.length)];
+            word = choose_random_from(model[word]);
         } else {
             word = first;
         }
@@ -160,8 +110,7 @@ let generate_sentence = function(model,first,avg_length,terminator){
     for(var i=0;i<5;i++){
         if(unacceptable_ends.includes(sentence[sentence.length-1]))sentence.pop();
     }
-    let final = sentence.join(' ')+terminator.trim();
-    console.log(final);
+    let final = sentence.join(' ').trim()+terminator;
     return final;
 };
 
@@ -176,22 +125,22 @@ let closest_word = function(words,otherWord){
     return scores[0].word;
 };
 
-let get_synonyms = function(w,additional){
-    let synonyms = thesaurus.get_synonyms(w);
-    synonyms = synonyms.filter(w=>!w.match(/\s/));
-    synonyms = shuffle(synonyms);
-    synonyms = synonyms.slice(0,additional);
-    if(!synonyms.includes(w))synonyms.push(w);
-    return synonyms.flat(1);
-};
-
 let generate_general_sentences = function(model,words,len){
     for(var i =0;i<10;i++){
-        generate_sentence(model,choose_random_from(words),len,".");
+        let sentence = generate_sentence(model,choose_random_from(words),len,".");
+        console.log(initial_cap(sentence));
     }
 };
 
 let generate_triggered_sentences = function(trigger_phrase,model,words,len){
+    let get_synonyms = function(w,additional){
+        let synonyms = thesaurus.get_synonyms(w);
+        synonyms = synonyms.filter(w=>!w.match(/\s/));
+        synonyms = shuffle(synonyms);
+        synonyms = synonyms.slice(0,additional);
+        if(!synonyms.includes(w))synonyms.push(w);
+        return synonyms.flat(1);
+    };
     console.log(`(Trigger Phrase: ${trigger_phrase})`);
     let trigger_words = trigger_phrase.split(' ').map((w)=>get_synonyms(w,3)).flat(1);
     //console.log(trigger_words);
@@ -200,28 +149,40 @@ let generate_triggered_sentences = function(trigger_phrase,model,words,len){
         if(model[w]) return generate_sentence(model,w,len,"");
         else return generate_sentence(model,closest_word(words,w),len,"");
     });
+    console.log(initial_cap(fragments.join(' '))+".");
 };
 
-let process_data = function(data){
-    names_list =  fs.readFileSync(names_data,'utf8').split('\r\n');
-    let average_line_word_length = line_lengths(data);
+let get_model = function(load,model_path,data){
+    if(load) {
+        console.log("Loading model...");
+        return models.load_model(model_path);
+    } else {
+        console.log("Loading Text Data...");
+        console.log("Building model...");
+        let model = models.simple_markov_model(data);
+        models.save_model(model,model_path);
+        return model;
+    }
+};
+
+let process_model = function(model,average_line_word_length){
     console.log(`Average line length ${Math.floor(average_line_word_length)}\n--------------------------------`);
-    let model = models.simple_markov_model(data);
     let words = Object.getOwnPropertyNames(model);
     generate_general_sentences(model,words,Math.floor(average_line_word_length));
-    console.log("\n----------------------------\n");
+    console.log("----------------------------");
     let trigger_phrase = "Wonderful turkey";
     generate_triggered_sentences(trigger_phrase,model,words,Math.floor(average_line_word_length));
-    console.log("\n----------------------------\nDone!");
+    console.log("----------------------------\nDone!");
 };
 
-console.log("|Meanlinglessness|\n----------------------------");
+console.log("----------------------------\n     |Meanlinglessness|\n----------------------------");
 console.log("Loading Thesaurus...");
 thesaurus.load(path_to_thesaurus);
-console.log("Loading Text Data...");
-let data = "";
-paths_to_text.forEach((p)=>{
-    data =data + get_data(p) +"\n";
-});
+console.log("Loading Names List...");
+names_list =  get_data_from_path(names_data).split('\r\n');
 console.log("----------------------------");
-process_data(data);
+let load_model = true;
+let data = load_model?null:get_data_from_folder(path_to_data);
+let average_line_word_length = load_model?15:line_lengths(data);
+let model = get_model(true,path_to_model,data);
+process_model(model,average_line_word_length);

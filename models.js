@@ -28,7 +28,7 @@ let save_model = function(model,path){
 };
 
 let load_model = function(path){
-
+    return JSON.parse(fs.readFileSync(path));
 };
 
 module.exports = {
